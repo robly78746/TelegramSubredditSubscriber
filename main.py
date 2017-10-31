@@ -2,7 +2,6 @@ import json
 import time
 import dbactions
 import fsm
-#import main
 from tgchat_sender.tgapi import api
 from tgchat_sender.tgkeyboard import keyboard
 
