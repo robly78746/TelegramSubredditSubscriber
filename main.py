@@ -1,8 +1,10 @@
+import json
 import time
-import chat_sender
 import dbactions
 import fsm
-import main
+#import main
+from tgchat_sender.tgapi import api
+from tgchat_sender.tgkeyboard import keyboard
 
 check_state = fsm.check_state
 
@@ -230,3 +232,6 @@ def listener(cooldown):
             map(lambda x: x['update_id'], commands if commands
                 else callbacks), default= lastmsg            
         )
+
+if __name__ == '__main__':
+    listener(1)

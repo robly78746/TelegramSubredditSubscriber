@@ -1,11 +1,11 @@
 import ast
-from os.path import join
+#from os.path import join
 from sqlite3 import *
-from .. import json
+import json
 
-PATH = join('WebAndBots', 'TG', 'bots', 'subscriber', '%s')
+#PATH = join('WebAndBots', 'TG', 'bots', 'subscriber', '%s')
 
-def bdopen(dbname = PATH % 'users.db'):
+def bdopen(dbname = 'users.db'):
     opendb = connect(dbname)
     opendb.row_factory = Row
     bd = opendb.cursor()
