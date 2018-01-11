@@ -1,4 +1,0 @@
-[submodule "tgchat_sender"]
-	path = tgchat_sender
-	url = https://github.com/Blucknote/tgchat_sender
-	branch = relative
