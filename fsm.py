@@ -1,8 +1,8 @@
-from tgchat_sender import tgapi as api, tgkeyboard as keyboard
+from tgapi import api
+from tgkeyboard import keyboard
 import json
-#from os.path import join
 
-#STATES = join('WebAndBots', 'TG', 'bots', 'subscriber', 'states.json')
+STATES = 'states.json'
 
 def load_states():
     return json.loads(open(STATES , 'r').read())

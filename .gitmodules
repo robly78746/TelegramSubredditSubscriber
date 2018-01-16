@@ -1,3 +1,6 @@
-[submodule "tgchat_sender"]
-	path = tgchat_sender
-	url = https://github.com/Blucknote/tgchat_sender
+[submodule "tgapi"]
+	path = tgapi
+	url = https://github.com/Blucknote/tgapi
+[submodule "tgkeyboard"]
+	path = tgkeyboard
+	url = https://github.com/Blucknote/tgkeyboard

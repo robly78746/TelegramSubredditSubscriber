@@ -2,8 +2,8 @@ import json
 import time
 import dbactions
 import fsm
-from tgchat_sender.tgapi import api
-from tgchat_sender.tgkeyboard import keyboard
+from tgapi import api
+from tgkeyboard import keyboard
 
 check_state = fsm.check_state
 
@@ -40,34 +40,60 @@ def succ_sub_message(userid, subs, message):
                 'http://reddit.com/user/%s/submitted' % subs)                
             )
     
-    api.send_message(userid, 'Подписки %s' % message, keyboard.build(kb))   
+    api.send_message(
+        dbactions.params['token'], 
+        userid,
+        'Подписки %s' % message,
+        keyboard.build(kb)
+    )   
 
 def start(message, state, skip = False):
     userid = str(message['from']['id'])
 
     if len(message['text'].split(' ')) > 1:
+        
         fsm.set_state('/subscribe', userid)
         message['text'] = message['text'].split(' ')[1]
         subscribe(message, '/subscribe')
+        
     else:
+        
         kb = keyboard.create(3, False, True, False, True)
         kbrow = kb['keyboard']
         kbrow[0].append(keyboard.button(kb, '/subscribe'))
         kbrow[1].append(keyboard.button(kb, '/unsubscribe'))
         kbrow[2].append(keyboard.button(kb, '/subscriptions'))
+        
         if not skip:
+            
             if not dbactions.user_exist(userid):
-                api.send_message(userid, 'Зарегистрированно') 
+                
+                api.send_message(
+                    dbactions.params['token'],
+                    userid,
+                    'Зарегистрированно'
+                ) 
                 dbactions.register(userid)
-        api.send_message(userid, 'Выберите действие', keyboard.build(kb))  
+        
+        api.send_message(
+            dbactions.params['token'],
+            userid,
+            'Выберите действие',
+            keyboard.build(kb)
+        )  
+        
         fsm.set_state('/start', userid)
 
 @check_state
-def subscribe(message):
+def subscribe(message):    
     userid = str(message['from']['id'])
     sublist = message['text'].split(' ')
-    if not len(sublist) >= 1:
-        api.send_message(userid, 'Список подписок пуст')  
+    if len(sublist) < 1:
+        api.send_message(
+            dbactions.params['token'],
+            userid,
+            'Список подписок пуст'
+        )
     else:
         current_subs = dbactions.get_subscriptions(userid)
         *not_exesting_subs, = filter(
@@ -76,13 +102,14 @@ def subscribe(message):
         *valid, = filter(validator, not_exesting_subs)
         if valid:
             for newSub in valid:
-                current_subs[newSub] = time.time() - day * 7
+                current_subs[newSub] = time.time()
                 
             dbactions.update(userid, current_subs)
             succ_sub_message(userid, valid, 'установлены')
             fsm.set_state('/start', userid) 
         else:
             api.send_message(
+                dbactions.params['token'],
                 userid,
                 '''Вы уже подписаны на этих пользователей
                 или не найдены корректные имена для подписки'''
@@ -103,7 +130,11 @@ def unsubscribe(message):
         unsublist = message['data']
         
     if not len(unsublist) >= 1:
-        api.send_message(userid, 'Список отписок пуст')
+        api.send_message(
+            dbactions.params['token'],
+            userid,
+            'Список отписок пуст'
+        )
     else:
         subs = dbactions.get_subscriptions(userid)
         if type(unsublist) is not str:
@@ -127,22 +158,32 @@ def subscribtions(message, state):
         if x % 4 == 0:
             row += 1  
     api.send_message(
-        message['from']['id'], 'Ваши подписки', keyboard.build(kb)
+        dbactions.params['token'],
+        message['from']['id'],
+        'Ваши подписки',
+        keyboard.build(kb)
     )
 
 
 @check_unsub
 def dialog(callback):
     api.delete_message(
-        callback['from']['id'], callback['message']['message_id']
+        dbactions.params['token'],
+        callback['from']['id'],
+        callback['message']['message_id']
     )
     
     #sending new message with cancel bot button
     kb = keyboard.create(1, False, True, True)
     kb['keyboard'][0].append(keyboard.button(kb, '/cancel'))
     
-    api.send_message(callback['from']['id'],'Selected:',
-                     keyboard.build(kb)).read().decode('utf-8')
+    api.send_message(
+        dbactions.params['token'],
+        callback['from']['id'],
+        'Selected:',
+        keyboard.build(kb)        
+    )
+    #.read().decode('utf-8')
     
     kb = keyboard.create(2, True)
     kbrow = kb['inline_keyboard']
@@ -161,7 +202,10 @@ def dialog(callback):
     
     #adding inline buttons through new message :c
     api.send_message(
-        callback['from']['id'], callback['data'], keyboard.build(kb)
+        dbactions.params['token'],
+        callback['from']['id'],
+        callback['data'],
+        keyboard.build(kb)
     )
     fsm.set_state('/unsubscribe', str(callback['from']['id']))
 
@@ -208,7 +252,9 @@ def listener(cooldown):
                 
     while True:
         try:
-            commandsQ = json.loads(api.get_updates(lastmsg + 1))
+            commandsQ = json.loads(api.get_updates(
+                dbactions.params['token'],lastmsg + 1
+            ))
         except TypeError:
             continue  #nonetype
         

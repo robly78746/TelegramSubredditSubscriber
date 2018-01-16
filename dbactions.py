@@ -1,9 +1,7 @@
 import ast
-#from os.path import join
 from sqlite3 import *
 import json
 
-#PATH = join('WebAndBots', 'TG', 'bots', 'subscriber', '%s')
 
 def bdopen(dbname = 'users.db'):
     opendb = connect(dbname)
@@ -45,3 +43,7 @@ def update(subscriber, seq):
         (json.dumps(sublist), subscriber)        
     )
     opendb.commit()
+
+base, con = bdopen()
+
+params = dict(base.execute('select * from settings').fetchall()[0])
