@@ -4,8 +4,41 @@ import dbactions
 import fsm
 from tgapi import api
 from tgkeyboard import keyboard
+from sys import argv
 
 check_state = fsm.check_state
+
+
+def start_server(port = 9696):
+    from http.server import HTTPServer, BaseHTTPRequestHandler 
+    
+    class handler(BaseHTTPRequestHandler):
+        def _set_headers(self):
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+
+        def do_GET(self):
+            self._set_headers()
+            self.wfile.write('get response')
+    
+        def do_HEAD(self):
+            self._set_headers()
+    
+        def do_POST(self):
+            # Doesn't do anything with posted data
+            #self._set_headers()
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length).decode('utf-8')
+            self._set_headers()
+    
+    server_address = ('', port)
+    httpd = HTTPServer(server_address, handler)
+    httpd.serve_forever()
+
+if len(argv) > 1:
+    if argv[1] == 'webhook':
+        start_server()
 
 def validator(name):
     import re
