@@ -23,7 +23,8 @@ def on_update(incoming, webhook = False):
             filter(lambda y: y['update_id'] > lastmsg, commandsQ['result'])         
         ) if not webhook else filter(
             'message' in commandsQ and 'text' in commandsQ['message'],
-            filter(commandsQ['update_id'] > lastmsg, commandsQ)
+            commandsQ
+            #filter(commandsQ['update_id'] > lastmsg, commandsQ)
         )
         
         *callbacks, = filter(
