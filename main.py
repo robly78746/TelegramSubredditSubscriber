@@ -30,6 +30,7 @@ def start_server(port = 9696):
             #self._set_headers()
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length).decode('utf-8')
+            print(post_data)
             self._set_headers()
     
     server_address = ('', port)
