@@ -9,108 +9,6 @@ from sys import argv
 lastmsg = 0
 check_state = fsm.check_state
 
-actions = {
-    "/start": start,
-    "/subscribe": subscribe,
-    "/unsubscribe": unsubscribe,
-    "/subscriptions": subscribtions,
-    "/cancel": lambda msg, st: start(msg, st, skip= True),    
-}
-
-def command_check(message):
-    command = message['text'].split(' ')[0]
-    try:
-        actions[command](message, command)
-    except KeyError:
-        ustates = fsm.load_states()
-        user = str(message['from']['id'])
-        state = ustates[user]
-        #некорректная команда
-        actions[state](message, state)
-
-def callback_check(callback):
-    try:
-        actions[callback['data']](callback)
-    except KeyError:
-        dialog(callback)
-        #unsubscribe(callback, '/unsubscribe')
-        #pass  #unknown callback    
-
-def execution(kind, data_type):
-    *execute, = map(
-        lambda x: command_check(x) if kind == 'message'
-        else callback_check(x),
-        map(lambda y:y[kind], data_type)            
-    )
-    execute.clear()
-
-def on_update(incoming, webhook = False):
-    global lastmsg
-    try:
-        commandsQ = json.loads(incoming)
-    except TypeError:
-        pass  #nonetype
-    
-    if commandsQ:
-        print(commandsQ)
-
-        *commands, = filter(
-            lambda x:'message' in x and 'text' in x['message'],
-            filter(
-                lambda y: y['update_id'] > lastmsg, commandsQ['result']
-            ) if not webhook else [commandsQ]
-        )
-            
-        *callbacks, = filter(
-            lambda x: 'callback_query' in x,
-            commandsQ if webhook else commandsQ['result']
-        )
-    
-        if commands:
-            execution('message', commands)
-        elif callbacks:
-            execution('callback_query', callbacks)
-
-    time.sleep(cooldown)
-    lastmsg = max(
-        map(lambda x: x['update_id'], commands if commands
-            else callbacks), default= lastmsg            
-    )
-
-def start_server(port = 9696):
-    from http.server import HTTPServer, BaseHTTPRequestHandler 
-    
-    class handler(BaseHTTPRequestHandler):
-        def _set_headers(self):
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-
-        def do_GET(self):
-            self._set_headers()
-            self.wfile.write('get response')
-    
-        def do_HEAD(self):
-            self._set_headers()
-    
-        def do_POST(self):
-            # Doesn't do anything with posted data
-            #self._set_headers()
-            content_length = int(self.headers['Content-Length'])
-            post_data = self.rfile.read(content_length).decode('utf-8')
-            on_update(post_data, True)
-            self._set_headers()
-    
-    server_address = ('', port)
-    httpd = HTTPServer(server_address, handler)
-    httpd.serve_forever()
-
-if len(argv) > 1:
-    if argv[1] == 'webhook':
-        resp = api.set_webhook(dbactions.params['token'], argv[2], argv[3])
-        print(resp.read().decode('utf-8'))
-        start_server()
-
 def validator(name):
     import re
     check = re.compile(r'([A-Z]|[a-z]|\d|_|-)*')
@@ -312,6 +210,108 @@ def dialog(callback):
         keyboard.build(kb)
     )
     fsm.set_state('/unsubscribe', str(callback['from']['id']))
+
+actions = {
+    "/start": start,
+    "/subscribe": subscribe,
+    "/unsubscribe": unsubscribe,
+    "/subscriptions": subscribtions,
+    "/cancel": lambda msg, st: start(msg, st, skip= True),    
+}
+
+def command_check(message):
+    command = message['text'].split(' ')[0]
+    try:
+        actions[command](message, command)
+    except KeyError:
+        ustates = fsm.load_states()
+        user = str(message['from']['id'])
+        state = ustates[user]
+        #некорректная команда
+        actions[state](message, state)
+
+def callback_check(callback):
+    try:
+        actions[callback['data']](callback)
+    except KeyError:
+        dialog(callback)
+        #unsubscribe(callback, '/unsubscribe')
+        #pass  #unknown callback    
+
+def execution(kind, data_type):
+    *execute, = map(
+        lambda x: command_check(x) if kind == 'message'
+        else callback_check(x),
+        map(lambda y:y[kind], data_type)            
+    )
+    execute.clear()
+
+def on_update(incoming, webhook = False):
+    global lastmsg
+    try:
+        commandsQ = json.loads(incoming)
+    except TypeError:
+        pass  #nonetype
+    
+    if commandsQ:
+        print(commandsQ)
+
+        *commands, = filter(
+            lambda x:'message' in x and 'text' in x['message'],
+            filter(
+                lambda y: y['update_id'] > lastmsg, commandsQ['result']
+            ) if not webhook else [commandsQ]
+        )
+            
+        *callbacks, = filter(
+            lambda x: 'callback_query' in x,
+            commandsQ if webhook else commandsQ['result']
+        )
+    
+        if commands:
+            execution('message', commands)
+        elif callbacks:
+            execution('callback_query', callbacks)
+
+    time.sleep(cooldown)
+    lastmsg = max(
+        map(lambda x: x['update_id'], commands if commands
+            else callbacks), default= lastmsg            
+    )
+
+def start_server(port = 9696):
+    from http.server import HTTPServer, BaseHTTPRequestHandler 
+    
+    class handler(BaseHTTPRequestHandler):
+        def _set_headers(self):
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+
+        def do_GET(self):
+            self._set_headers()
+            self.wfile.write('get response')
+    
+        def do_HEAD(self):
+            self._set_headers()
+    
+        def do_POST(self):
+            # Doesn't do anything with posted data
+            #self._set_headers()
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length).decode('utf-8')
+            on_update(post_data, True)
+            self._set_headers()
+    
+    server_address = ('', port)
+    httpd = HTTPServer(server_address, handler)
+    httpd.serve_forever()
+
+if len(argv) > 1:
+    if argv[1] == 'webhook':
+        resp = api.set_webhook(dbactions.params['token'], argv[2], argv[3])
+        print(resp.read().decode('utf-8'))
+        start_server()
 
 if __name__ == '__main__':
     while True:
