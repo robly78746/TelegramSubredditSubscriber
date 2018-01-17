@@ -6,6 +6,7 @@ from tgapi import api
 from tgkeyboard import keyboard
 from sys import argv
 
+lastmsg = 0
 check_state = fsm.check_state
 
 def on_update(incoming, webhook = False):
@@ -18,10 +19,10 @@ def on_update(incoming, webhook = False):
         print(commandsQ)
         *commands, = filter(
             lambda x:'message' in x and 'text' in x['message'],
-            filter(
-                lambda y: y['update_id'] > lastmsg,
-                commandsQ if webhook else commandsQ['result']
-            )            
+            filter(lambda y: y['update_id'] > lastmsg, commandsQ['result'])         
+        ) if not webhook else filter(
+            'message' in commandsQ and 'text' in commandsQ['message'],
+            filter(commandsQ['update_id'] > lastmsg, commandsQ)
         )
         
         *callbacks, = filter(
@@ -285,7 +286,6 @@ actions = {
 }
 
 def listener(cooldown):
-    lastmsg = 0
 
     def command_check(message):
         command = message['text'].split(' ')[0]
