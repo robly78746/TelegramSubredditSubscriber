@@ -30,7 +30,7 @@ def start_server(port = 9696):
             #self._set_headers()
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length).decode('utf-8')
-            print(post_data)
+            on_update(post_data)
             self._set_headers()
     
     server_address = ('', port)
@@ -253,6 +253,33 @@ actions = {
     "/cancel": lambda msg, st: start(msg, st, skip= True),    
 }
 
+def on_update(incoming):
+    try:
+        commandsQ = json.loads(incoming)
+    except TypeError:
+        continue  #nonetype
+    
+    if commandsQ:
+        *commands, = filter(
+            lambda x:'message' in x and 'text' in x['message'],
+            filter(lambda y: y['update_id'] > lastmsg, commandsQ['result'])            
+        )
+        
+        *callbacks, = filter(
+            lambda x: 'callback_query' in x, commandsQ['result']
+        )
+    
+        if commands:
+            execution('message')
+        elif callbacks:
+            execution('callback_query')
+
+    time.sleep(cooldown)
+    lastmsg = max(
+        map(lambda x: x['update_id'], commands if commands
+            else callbacks), default= lastmsg            
+    )
+
 def listener(cooldown):
     lastmsg = 0
 
@@ -284,35 +311,10 @@ def listener(cooldown):
                 else callbacks                
             )            
         )
-        execute.clear()      
+        execute.clear()
                 
     while True:
-        try:
-            commandsQ = json.loads(api.get_updates(
-                dbactions.params['token'],lastmsg + 1
-            ))
-        except TypeError:
-            continue  #nonetype
-        
-        *commands, = filter(
-            lambda x:'message' in x and 'text' in x['message'],
-            filter(lambda y: y['update_id'] > lastmsg, commandsQ['result'])            
-        )
-        
-        *callbacks, = filter(
-            lambda x: 'callback_query' in x, commandsQ['result']
-        )
-        
-        if commands:
-            execution('message')
-        elif callbacks:
-            execution('callback_query')
-
-        time.sleep(cooldown)
-        lastmsg = max(
-            map(lambda x: x['update_id'], commands if commands
-                else callbacks), default= lastmsg            
-        )
+        on_update(api.get_updates(dbactions.params['token'],lastmsg + 1))
 
 if __name__ == '__main__':
     listener(1)
