@@ -8,7 +8,7 @@ from sys import argv
 
 check_state = fsm.check_state
 
-def on_update(incoming):
+def on_update(incoming, webhook = False):
     try:
         commandsQ = json.loads(incoming)
     except TypeError:
@@ -18,11 +18,15 @@ def on_update(incoming):
         print(commandsQ)
         *commands, = filter(
             lambda x:'message' in x and 'text' in x['message'],
-            filter(lambda y: y['update_id'] > lastmsg, commandsQ['result'])            
+            filter(
+                lambda y: y['update_id'] > lastmsg,
+                commandsQ if webhook else commandsQ['result']
+            )            
         )
         
         *callbacks, = filter(
-            lambda x: 'callback_query' in x, commandsQ['result']
+            lambda x: 'callback_query' in x,
+            commandsQ if webhook else commandsQ['result']
         )
     
         if commands:
@@ -57,7 +61,7 @@ def start_server(port = 9696):
             #self._set_headers()
             content_length = int(self.headers['Content-Length'])
             post_data = self.rfile.read(content_length).decode('utf-8')
-            on_update(post_data)
+            on_update(post_data, True)
             self._set_headers()
     
     server_address = ('', port)
