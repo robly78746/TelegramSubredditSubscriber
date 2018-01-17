@@ -15,6 +15,7 @@ def on_update(incoming):
         pass  #nonetype
     
     if commandsQ:
+        print(commandsQ)
         *commands, = filter(
             lambda x:'message' in x and 'text' in x['message'],
             filter(lambda y: y['update_id'] > lastmsg, commandsQ['result'])            
