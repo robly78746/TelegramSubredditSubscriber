@@ -9,6 +9,33 @@ from sys import argv
 lastmsg = 0
 check_state = fsm.check_state
 
+def command_check(message):
+    command = message['text'].split(' ')[0]
+    try:
+        actions[command](message, command)
+    except KeyError:
+        ustates = fsm.load_states()
+        user = str(message['from']['id'])
+        state = ustates[user]
+        #некорректная команда
+        actions[state](message, state)
+
+def callback_check(callback):
+    try:
+        actions[callback['data']](callback)
+    except KeyError:
+        dialog(callback)
+        #unsubscribe(callback, '/unsubscribe')
+        #pass  #unknown callback    
+
+def execution(kind, data_type):
+    *execute, = map(
+        lambda x: command_check(x) if kind == 'message'
+        else callback_check(x),
+        map(lambda y:y[kind], data_type)            
+    )
+    execute.clear()
+
 def on_update(incoming, webhook = False):
     global lastmsg
     try:
@@ -18,17 +45,13 @@ def on_update(incoming, webhook = False):
     
     if commandsQ:
         print(commandsQ)
-        if not webhook:
-            *commands, = filter(
-                lambda x:'message' in x and 'text' in x['message'],
-                filter(lambda y: y['update_id'] > lastmsg, commandsQ['result'])         
-            )
-        else:
-            *commands, = filter(
-                'message' in commandsQ and 'text' in commandsQ['message'],
-                commandsQ
-                #filter(commandsQ['update_id'] > lastmsg, commandsQ)
-            )
+
+        *commands, = filter(
+            lambda x:'message' in x and 'text' in x['message'],
+            filter(
+                lambda y: y['update_id'] > lastmsg, commandsQ['result']
+            ) if not webhook else [commandsQ]
+        )
             
         *callbacks, = filter(
             lambda x: 'callback_query' in x,
@@ -36,9 +59,9 @@ def on_update(incoming, webhook = False):
         )
     
         if commands:
-            execution('message')
+            execution('message', commands)
         elif callbacks:
-            execution('callback_query')
+            execution('callback_query', callbacks)
 
     time.sleep(cooldown)
     lastmsg = max(
@@ -289,41 +312,8 @@ actions = {
     "/subscriptions": subscribtions,
     "/cancel": lambda msg, st: start(msg, st, skip= True),    
 }
-
-def listener(cooldown):
-    global lastmsg
-    def command_check(message):
-        command = message['text'].split(' ')[0]
-        try:
-            actions[command](message, command)
-        except KeyError:
-            ustates = fsm.load_states()
-            user = str(message['from']['id'])
-            state = ustates[user]
-            #некорректная команда
-            actions[state](message, state)
-    
-    def callback_check(callback):
-        try:
-            actions[callback['data']](callback)
-        except KeyError:
-            dialog(callback)
-            #unsubscribe(callback, '/unsubscribe')
-            #pass  #unknown callback    
-    
-    def execution(kind):
-        *execute, = map(
-            lambda x: command_check(x) if kind == 'message'
-            else callback_check(x),
-            map(
-                lambda y:y[kind], commands if kind == 'message'
-                else callbacks                
-            )            
-        )
-        execute.clear()
-                
-    while True:
-        on_update(api.get_updates(dbactions.params['token'],lastmsg + 1))
+               
 
 if __name__ == '__main__':
-    listener(1)
+    while True:
+        on_update(api.get_updates(dbactions.params['token'],lastmsg + 1))
