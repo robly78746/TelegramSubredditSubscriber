@@ -10,6 +10,7 @@ lastmsg = 0
 check_state = fsm.check_state
 
 def on_update(incoming, webhook = False):
+    global lastmsg
     try:
         commandsQ = json.loads(incoming)
     except TypeError:
@@ -286,7 +287,7 @@ actions = {
 }
 
 def listener(cooldown):
-
+    global lastmsg
     def command_check(message):
         command = message['text'].split(' ')[0]
         try:
