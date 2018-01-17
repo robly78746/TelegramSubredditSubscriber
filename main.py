@@ -8,6 +8,32 @@ from sys import argv
 
 check_state = fsm.check_state
 
+def on_update(incoming):
+    try:
+        commandsQ = json.loads(incoming)
+    except TypeError:
+        pass  #nonetype
+    
+    if commandsQ:
+        *commands, = filter(
+            lambda x:'message' in x and 'text' in x['message'],
+            filter(lambda y: y['update_id'] > lastmsg, commandsQ['result'])            
+        )
+        
+        *callbacks, = filter(
+            lambda x: 'callback_query' in x, commandsQ['result']
+        )
+    
+        if commands:
+            execution('message')
+        elif callbacks:
+            execution('callback_query')
+
+    time.sleep(cooldown)
+    lastmsg = max(
+        map(lambda x: x['update_id'], commands if commands
+            else callbacks), default= lastmsg            
+    )
 
 def start_server(port = 9696):
     from http.server import HTTPServer, BaseHTTPRequestHandler 
@@ -252,33 +278,6 @@ actions = {
     "/subscriptions": subscribtions,
     "/cancel": lambda msg, st: start(msg, st, skip= True),    
 }
-
-def on_update(incoming):
-    try:
-        commandsQ = json.loads(incoming)
-    except TypeError:
-        pass  #nonetype
-    
-    if commandsQ:
-        *commands, = filter(
-            lambda x:'message' in x and 'text' in x['message'],
-            filter(lambda y: y['update_id'] > lastmsg, commandsQ['result'])            
-        )
-        
-        *callbacks, = filter(
-            lambda x: 'callback_query' in x, commandsQ['result']
-        )
-    
-        if commands:
-            execution('message')
-        elif callbacks:
-            execution('callback_query')
-
-    time.sleep(cooldown)
-    lastmsg = max(
-        map(lambda x: x['update_id'], commands if commands
-            else callbacks), default= lastmsg            
-    )
 
 def listener(cooldown):
     lastmsg = 0
