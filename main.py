@@ -9,6 +9,14 @@ from sys import argv
 lastmsg = 0
 check_state = fsm.check_state
 
+actions = {
+    "/start": start,
+    "/subscribe": subscribe,
+    "/unsubscribe": unsubscribe,
+    "/subscriptions": subscribtions,
+    "/cancel": lambda msg, st: start(msg, st, skip= True),    
+}
+
 def command_check(message):
     command = message['text'].split(' ')[0]
     try:
@@ -304,15 +312,6 @@ def dialog(callback):
         keyboard.build(kb)
     )
     fsm.set_state('/unsubscribe', str(callback['from']['id']))
-
-actions = {
-    "/start": start,
-    "/subscribe": subscribe,
-    "/unsubscribe": unsubscribe,
-    "/subscriptions": subscribtions,
-    "/cancel": lambda msg, st: start(msg, st, skip= True),    
-}
-               
 
 if __name__ == '__main__':
     while True:
