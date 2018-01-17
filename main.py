@@ -257,7 +257,7 @@ def on_update(incoming):
     try:
         commandsQ = json.loads(incoming)
     except TypeError:
-        continue  #nonetype
+        pass  #nonetype
     
     if commandsQ:
         *commands, = filter(
