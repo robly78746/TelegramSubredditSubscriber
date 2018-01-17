@@ -40,7 +40,7 @@ def start_server(port = 9696):
 if len(argv) > 1:
     if argv[1] == 'webhook':
         resp = api.set_webhook(dbactions.params['token'], argv[2], argv[3])
-        print(resp)
+        print(resp.read().decode('utf-8'))
         start_server()
 
 def validator(name):
