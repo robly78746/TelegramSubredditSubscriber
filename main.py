@@ -18,7 +18,7 @@ def on_update(incoming, webhook = False):
     
     if commandsQ:
         print(commandsQ)
-        if webhook:
+        if not webhook:
             *commands, = filter(
                 lambda x:'message' in x and 'text' in x['message'],
                 filter(lambda y: y['update_id'] > lastmsg, commandsQ['result'])         
