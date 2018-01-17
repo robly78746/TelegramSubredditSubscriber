@@ -246,7 +246,7 @@ def execution(kind, data_type):
     )
     execute.clear()
 
-def on_update(incoming, webhook = False):
+def on_update(incoming, webhook = False, cooldown = 1):
     global lastmsg
     try:
         commandsQ = json.loads(incoming)
@@ -254,7 +254,6 @@ def on_update(incoming, webhook = False):
         pass  #nonetype
     
     if commandsQ:
-        print(commandsQ)
 
         *commands, = filter(
             lambda x:'message' in x and 'text' in x['message'],
@@ -272,8 +271,9 @@ def on_update(incoming, webhook = False):
             execution('message', commands)
         elif callbacks:
             execution('callback_query', callbacks)
-
-    time.sleep(cooldown)
+    
+    if not webhook:
+        time.sleep(cooldown)
     lastmsg = max(
         map(lambda x: x['update_id'], commands if commands
             else callbacks), default= lastmsg            
