@@ -1,6 +1,7 @@
 from tgapi import api
 from tgkeyboard import keyboard
 import json
+from internal import token
 
 STATES = 'states.json'
 
@@ -17,21 +18,14 @@ def set_state(state, user):
     old[user] = state
     save_states(old)
 
-def check_state(fn):
-    def wrapper(message, req_state):
-        userid = str(message['from']['id'])
-        ustates = load_states()
-        if ustates[userid] == '/start':
-            kb = keyboard.create(1, False, True, True)
-            kb['keyboard'][0].append(keyboard.button(kb, '/cancel'))
-            api.send_message(
-                userid,
-                'Теперь введите имена пользователей через пробел',
-                keyboard.build(kb)                
-            )
-            set_state(req_state, userid)
-        elif ustates[userid] == req_state:
-            fn(message)
-        else:
-            return  #unknown state
+def check_state(state):
+    def wrapper(fn):
+        def inner(message):
+            userid = str(message['from']['id'])
+            ustates = load_states()
+            if ustates[userid] == state:
+                fn(message)
+            else:
+                return  #unknown state
+        return inner
     return wrapper

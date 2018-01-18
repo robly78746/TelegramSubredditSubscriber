@@ -1,5 +1,3 @@
-*.exe 
+states.json
 *.db 
 \__pycache__
-*.wpr
-*.wpu
