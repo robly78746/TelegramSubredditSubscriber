@@ -84,33 +84,38 @@ def start(message):
 @internal.on_message('/cancel')
 def cancel(message):
     userid = str(message['from']['id'])
+    if _subscribe in internal.handlers:
+        internal.handlers[internal.handlers.index(_subscribe)] = subscribe
     _start(userid)
 
 @internal.on_message(r'.*')     #regexp
 @check_state('/subscribe')
 def _subscribe(message):
-    current_subs = internal.dbactions.get_subscriptions(message['from']['id'])
-    *not_exesting_subs, = filter(
-        lambda sub: sub not in current_subs, message['text'].split(' ')
-    )
-    *valid, = filter(validator, not_exesting_subs)
-    if valid:
-        for newSub in valid:
-            current_subs[newSub] = internal.time.time()
-            
-        internal.dbactions.update(message['from']['id'], current_subs)
-        succ_sub_message(message['from']['id'], valid, 'установлены')
-        fsm.set_state('/start', message['from']['id']) 
-    else:
-        api.send_message(
-            internal.token,
-            message['from']['id'],
-            '''Вы уже подписаны на этих пользователей
-            или не найдены корректные имена для подписки'''
-            )
+    troll = internal.handle(message, [subscribe])[0]
+    if troll == False or troll is None:
+        current_subs = internal.dbactions.get_subscriptions(message['from']['id'])
+        *not_exesting_subs, = filter(
+            lambda sub: sub not in current_subs, message['text'].split(' ')
+        )
+        *valid, = filter(validator, not_exesting_subs)
+        if valid:
+            for newSub in valid:
+                current_subs[newSub] = internal.time.time()
+                
+            internal.dbactions.update(message['from']['id'], current_subs)
+            succ_sub_message(message['from']['id'], valid, 'установлены')
+            #fsm.set_state('/start', message['from']['id'])
+            internal.handlers[internal.handlers.index(_subscribe)] = subscribe
+        else:
+            api.send_message(
+                internal.token,
+                message['from']['id'],
+                '''Вы уже подписаны на этих пользователей
+                или не найдены корректные имена для подписки'''
+                )
+
 
 @internal.on_message('/subscribe')
-#@check_state('/subscribe')
 def subscribe(message):    
     userid = str(message['from']['id'])
     sublist = message['text'].split(' ')
@@ -130,7 +135,12 @@ def subscribe(message):
             keyboard.build(kb)                
         )
         fsm.set_state('/subscribe', userid)
-
+        if _subscribe not in internal.handlers:
+            internal.handlers[internal.handlers.index(subscribe)] = _subscribe
+            return False
+        else:
+            return True
+            
 @check_state
 def unsubscribe(message):
     def delete(usr):
@@ -227,9 +237,7 @@ def dialog(callback):
     fsm.set_state('/unsubscribe', str(callback['from']['id'])) 
 
 
-message_handlers = [
-    start, subscriptions, subscribe, cancel, _subscribe
-]  #, unsubscribe]
+message_handlers = [cancel, start, subscriptions, subscribe, ]  #, unsubscribe]
 internal.handlers.extend(message_handlers)
 while True:
     internal.on_update(

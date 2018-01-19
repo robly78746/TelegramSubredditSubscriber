@@ -12,20 +12,23 @@ def on_message(text):
     def wrapper(fn):
         def inner(message):
             if re.findall(text, message['text']):
-                fn(message)
+                return(fn(message))
         return inner
     return wrapper
 
 def handle(message, handlers = handlers):
     if len(message) > 1:
-        _filter = [m['message'] for m in message]
+        if type(message) is not dict:
+            _filter = [m['message'] for m in message]
+        else:
+            _filter = [message]
     else:
         _filter = False
     for h in handlers:
         if _filter:     #this also means we have multiple messages
             *done, = map(h, _filter)
-            del (done)
-        else:           #thats why if not we transfer msg directly
+            return done
+        else:           #thats why if not we transfer single msg directly
             h(message[0]['message'])
 
 def on_update(incoming, webhook = False, cooldown = 1):
