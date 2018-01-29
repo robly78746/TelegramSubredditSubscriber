@@ -84,13 +84,13 @@ def start(message):
 @internal.on_message('/cancel')
 def cancel(message):
     userid = str(message['from']['id'])
-    if _subscribe in internal.handlers:
-        internal.handlers[internal.handlers.index(_subscribe)] = subscribe
+    if sub_handler in internal.handlers:
+        internal.handlers[internal.handlers.index(sub_handler)] = subscribe
     _start(userid)
 
 @internal.on_message(r'.*')     #regexp
 @check_state('/subscribe')
-def _subscribe(message):
+def sub_handler(message):
     troll = internal.handle(message, [subscribe])[0]
     if troll == False or troll is None:
         current_subs = internal.dbactions.get_subscriptions(message['from']['id'])
@@ -105,7 +105,7 @@ def _subscribe(message):
             internal.dbactions.update(message['from']['id'], current_subs)
             succ_sub_message(message['from']['id'], valid, 'установлены')
             #fsm.set_state('/start', message['from']['id'])
-            internal.handlers[internal.handlers.index(_subscribe)] = subscribe
+            internal.handlers[internal.handlers.index(sub_handler)] = subscribe
         else:
             api.send_message(
                 internal.token,
@@ -117,13 +117,45 @@ def _subscribe(message):
 
 @internal.on_message('/subscribe')
 def subscribe(message):    
+    first_step(message)
+
+@internal.on_message(r'.*')     #regexp
+@check_state('/unsubscribe')
+def unsub_handler(message):
+    def delete(usr):
+        try:
+            subs.pop(usr)
+        except KeyError:
+            pass        #user not in subscriptions
+    
+    troll = internal.handle(message, [unsubscribe])[0]
+    if troll == False or troll is None:
+        userid = str(message['from']['id'])
+        if 'text' in message:
+            unsublist = message['text'].split(' ')
+        else:
+            unsublist = message['data']
+            
+        subs = internal.dbactions.get_subscriptions(userid)
+        if type(unsublist) is not str:
+            for del_sub in unsublist:
+                delete(del_sub)
+        else:
+            delete(unsublist)
+        internal.dbactions.update(userid, subs)
+        succ_sub_message(userid, unsublist, 'завершены')
+        fsm.set_state('/start', userid)
+
+def first_step(message):
+    userlist = message['text'].split(' ')
     userid = str(message['from']['id'])
-    sublist = message['text'].split(' ')
-    if len(sublist) < 1:
+    if len(userlist) < 1:
         api.send_message(
             internal.token,
             userid,
-            'Список подписок пуст'
+            'Список %s пуст'
+            % 'подписок' if message['text'] == '/subscribe'
+            else 'отписок'
         )
     else:
         kb = keyboard.create(1, False, True, True)
@@ -134,43 +166,23 @@ def subscribe(message):
             'Теперь введите имена пользователей через пробел',
             keyboard.build(kb)                
         )
-        fsm.set_state('/subscribe', userid)
-        if _subscribe not in internal.handlers:
-            internal.handlers[internal.handlers.index(subscribe)] = _subscribe
+        fsm.set_state('%s' % message['text'], userid)
+        if message['text'] == '/subscribe':
+            if sub_handler not in internal.handlers:
+                internal.handlers[internal.handlers.index(subscribe)] = sub_handler
+                return False
+            else:
+                return True
+        elif message['text'] == '/unsubscribe':
+            if unsub_handler not in internal.handlers:
+                internal.handlers[internal.handlers.index(unsubscribe)] = unsub_handler
             return False
         else:
-            return True
-            
-@check_state
-def unsubscribe(message):
-    def delete(usr):
-        try:
-            subs.pop(usr)
-        except KeyError:
-            pass        #user not in subscriptions
-        
-    userid = str(message['from']['id'])
-    if 'text' in message:
-        unsublist = message['text'].split(' ')
-    else:
-        unsublist = message['data']
-        
-    if not len(unsublist) >= 1:
-        api.send_message(
-            internal.token,
-            userid,
-            'Список отписок пуст'
-        )
-    else:
-        subs = internal.dbactions.get_subscriptions(userid)
-        if type(unsublist) is not str:
-            for del_sub in unsublist:
-                delete(del_sub)
-        else:
-            delete(unsublist)
-        internal.dbactions.update(userid, subs)
-        succ_sub_message(userid, unsublist, 'завершены')
-        fsm.set_state('/start', userid)
+            return True          
+
+@internal.on_message('/unsubscribe')
+def unsubscribe(message): 
+    first_step(message)
 
 @internal.on_message('/subscriptions')        
 def subscriptions(message):
@@ -237,7 +249,7 @@ def dialog(callback):
     fsm.set_state('/unsubscribe', str(callback['from']['id'])) 
 
 
-message_handlers = [cancel, start, subscriptions, subscribe, ]  #, unsubscribe]
+message_handlers = [cancel, start, subscriptions, subscribe, unsubscribe]
 internal.handlers.extend(message_handlers)
 while True:
     internal.on_update(
