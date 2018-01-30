@@ -1,7 +1,6 @@
 from tgapi import api
 from tgkeyboard import keyboard
 import json
-from internal import token
 
 STATES = 'states.json'
 

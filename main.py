@@ -42,7 +42,7 @@ def succ_sub_message(userid, subs, message):
             )
     
     api.send_message(
-        internal.token, 
+        token, 
         userid,
         'Подписки %s' % message,
         keyboard.build(kb)
@@ -55,7 +55,7 @@ def _start(userid):
     kbrow[1].append(keyboard.button(kb, '/unsubscribe'))
     kbrow[2].append(keyboard.button(kb, '/subscriptions'))    
     api.send_message(
-        internal.token,
+        token,
         userid,
         'Выберите действие',
         keyboard.build(kb)
@@ -77,7 +77,7 @@ def start(message):
         if not dbactions.user_exist(userid):
             dbactions.register(userid)
             api.send_message(
-                internal.token,
+                token,
                 userid,
                 'Зарегистрированно'
             ) 
@@ -115,7 +115,7 @@ def sub_handler(message):
             cancel(message)     #auto cancel
         else:
             api.send_message(
-                internal.token,
+                token,
                 message['from']['id'],
                 '''Вы уже подписаны на этих пользователей
                 или не найдены корректные имена для подписки'''
@@ -161,7 +161,7 @@ def first_step(message):
     userid = str(message['from']['id'])
     if len(userlist) < 1:
         api.send_message(
-            internal.token,
+            token,
             userid,
             'Список %s пуст'
             % 'подписок' if message['text'] == '/subscribe'
@@ -171,7 +171,7 @@ def first_step(message):
         kb = keyboard.create(1, False, True, True)
         kb['keyboard'][0].append(keyboard.button(kb, '/cancel'))
         api.send_message(
-            internal.token, 
+            token, 
             userid,
             'Теперь введите имена пользователей через пробел',
             keyboard.build(kb)                
@@ -208,7 +208,7 @@ def subscriptions(message):
         if x % 4 == 0:
             row += 1  
     api.send_message(
-        internal.token,
+        token,
         message['from']['id'],
         'Ваши подписки',
         keyboard.build(kb)
@@ -218,7 +218,7 @@ def subscriptions(message):
 @check_unsub
 def dialog(callback):
     api.delete_message(
-        internal.token,
+        token,
         callback['from']['id'],
         callback['message']['message_id']
     )
@@ -228,7 +228,7 @@ def dialog(callback):
     kb['keyboard'][0].append(keyboard.button(kb, '/cancel'))
     
     api.send_message(
-        internal.token,
+        token,
         callback['from']['id'],
         'Selected:',
         keyboard.build(kb)        
@@ -252,7 +252,7 @@ def dialog(callback):
     
     #adding inline buttons through new message :c
     api.send_message(
-        internal.token,
+        token,
         callback['from']['id'],
         callback['data'],
         keyboard.build(kb)
@@ -272,5 +272,5 @@ if len(argv) > 1:
 #polling
 while True:
     internal.on_update(
-        api.get_updates(internal.token, internal.lastmsg + 1)
+        api.get_updates(token, internal.lastmsg + 1)
     )
