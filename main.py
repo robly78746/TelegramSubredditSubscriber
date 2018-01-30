@@ -1,9 +1,12 @@
 import fsm
 import internal
+import dbactions
 from tgapi import api
 from tgkeyboard import keyboard
+from sys import argv
 
 check_state = fsm.check_state
+token = dbactions.params['token']
 
 def validator(name):
     import re
@@ -71,8 +74,8 @@ def start(message):
         subscribe(message)
         
     else:        
-        if not internal.dbactions.user_exist(userid):
-            internal.dbactions.register(userid)
+        if not dbactions.user_exist(userid):
+            dbactions.register(userid)
             api.send_message(
                 internal.token,
                 userid,
@@ -94,7 +97,7 @@ def cancel(message):
 def sub_handler(message):
     troll = internal.handle(message, [subscribe])[0]
     if troll != False or troll is None:
-        get_subscriptions = internal.dbactions.get_subscriptions
+        get_subscriptions = dbactions.get_subscriptions
         current_subs = get_subscriptions(message['from']['id'])
         *not_exesting_subs, = filter(
             lambda sub: sub not in current_subs, message['text'].split(' ')
@@ -104,7 +107,7 @@ def sub_handler(message):
             for newSub in valid:
                 current_subs[newSub] = internal.time.time()
                 
-            internal.dbactions.update(message['from']['id'], current_subs)
+            dbactions.update(message['from']['id'], current_subs)
             succ_sub_message(message['from']['id'], valid, 'установлены')
             handlers = internal.handlers
             handlers[handlers.index(sub_handler)] = subscribe
@@ -140,13 +143,13 @@ def unsub_handler(message):
         else:
             unsublist = message['data']
             
-        subs = internal.dbactions.get_subscriptions(userid)
+        subs = dbactions.get_subscriptions(userid)
         if type(unsublist) is not str:
             for del_sub in unsublist:
                 delete(del_sub)
         else:
             delete(unsublist)
-        internal.dbactions.update(userid, subs)
+        dbactions.update(userid, subs)
         succ_sub_message(userid, unsublist, 'завершены')
         handlers = internal.handlers
         handlers[handlers.index(unsub_handler)] = unsubscribe
@@ -194,7 +197,7 @@ def unsubscribe(message):
 
 @internal.on_message('/subscriptions')        
 def subscriptions(message):
-    subs = internal.dbactions.get_subscriptions(message['from']['id'])
+    subs = dbactions.get_subscriptions(message['from']['id'])
     values = list(enumerate(subs))
     kb = keyboard.create(len(subs) // 2, True)
     row = 0
@@ -259,6 +262,14 @@ def dialog(callback):
 
 message_handlers = [cancel, start, subscriptions, subscribe, unsubscribe]
 internal.handlers.extend(message_handlers)
+
+if len(argv) > 1:
+    if argv[1] == 'webhook':
+        resp = api.set_webhook(dbactions.params['token'], argv[2], argv[3])
+        print(resp.read().decode('utf-8'))
+        internal.start_server()
+
+#polling
 while True:
     internal.on_update(
         api.get_updates(internal.token, internal.lastmsg + 1)

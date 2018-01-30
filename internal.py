@@ -1,11 +1,8 @@
 import time
 import json
 import re
-from sys import argv
-import dbactions
 
 lastmsg = 0
-token = dbactions.params['token']
 handlers = []
 
 def on_message(text):
@@ -89,9 +86,3 @@ def start_server(port = 9696):
     server_address = ('', port)
     httpd = HTTPServer(server_address, handler)
     httpd.serve_forever()
-
-if len(argv) > 1:
-    if argv[1] == 'webhook':
-        resp = api.set_webhook(dbactions.params['token'], argv[2], argv[3])
-        print(resp.read().decode('utf-8'))
-        start_server()
