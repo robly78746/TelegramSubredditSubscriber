@@ -72,28 +72,30 @@ def start(message):
         
     else:        
         if not internal.dbactions.user_exist(userid):
+            internal.dbactions.register(userid)
             api.send_message(
                 internal.token,
                 userid,
                 'Зарегистрированно'
             ) 
-            internal.dbactions.register(userid)
         else:
             _start(userid)
 
 @internal.on_message('/cancel')
 def cancel(message):
     userid = str(message['from']['id'])
+    handlers = internal.handlers
     if sub_handler in internal.handlers:
-        internal.handlers[internal.handlers.index(sub_handler)] = subscribe
+        handlers[handlers.index(sub_handler)] = subscribe
     _start(userid)
 
 @internal.on_message(r'.*')     #regexp
 @check_state('/subscribe')
 def sub_handler(message):
     troll = internal.handle(message, [subscribe])[0]
-    if troll == False or troll is None:
-        current_subs = internal.dbactions.get_subscriptions(message['from']['id'])
+    if troll != False or troll is None:
+        get_subscriptions = internal.dbactions.get_subscriptions
+        current_subs = get_subscriptions(message['from']['id'])
         *not_exesting_subs, = filter(
             lambda sub: sub not in current_subs, message['text'].split(' ')
         )
@@ -104,8 +106,10 @@ def sub_handler(message):
                 
             internal.dbactions.update(message['from']['id'], current_subs)
             succ_sub_message(message['from']['id'], valid, 'установлены')
-            #fsm.set_state('/start', message['from']['id'])
-            internal.handlers[internal.handlers.index(sub_handler)] = subscribe
+            handlers = internal.handlers
+            handlers[handlers.index(sub_handler)] = subscribe
+            message['text'] = '/cancel'
+            cancel(message)     #auto cancel
         else:
             api.send_message(
                 internal.token,
@@ -117,7 +121,7 @@ def sub_handler(message):
 
 @internal.on_message('/subscribe')
 def subscribe(message):    
-    first_step(message)
+    return first_step(message)
 
 @internal.on_message(r'.*')     #regexp
 @check_state('/unsubscribe')
@@ -129,7 +133,7 @@ def unsub_handler(message):
             pass        #user not in subscriptions
     
     troll = internal.handle(message, [unsubscribe])[0]
-    if troll == False or troll is None:
+    if troll != False or troll is None:
         userid = str(message['from']['id'])
         if 'text' in message:
             unsublist = message['text'].split(' ')
@@ -144,7 +148,10 @@ def unsub_handler(message):
             delete(unsublist)
         internal.dbactions.update(userid, subs)
         succ_sub_message(userid, unsublist, 'завершены')
-        fsm.set_state('/start', userid)
+        handlers = internal.handlers
+        handlers[handlers.index(unsub_handler)] = unsubscribe
+        message['text'] = '/cancel'
+        cancel(message)     #auto cancel        
 
 def first_step(message):
     userlist = message['text'].split(' ')
@@ -167,22 +174,23 @@ def first_step(message):
             keyboard.build(kb)                
         )
         fsm.set_state('%s' % message['text'], userid)
+        handlers = internal.handlers
         if message['text'] == '/subscribe':
-            if sub_handler not in internal.handlers:
-                internal.handlers[internal.handlers.index(subscribe)] = sub_handler
-                return False
-            else:
+            if sub_handler not in handlers:
+                handlers[handlers.index(subscribe)] = sub_handler
                 return True
+            else:
+                return False
         elif message['text'] == '/unsubscribe':
-            if unsub_handler not in internal.handlers:
-                internal.handlers[internal.handlers.index(unsubscribe)] = unsub_handler
-            return False
-        else:
-            return True          
+            if unsub_handler not in handlers:
+                handlers[handlers.index(unsubscribe)] = unsub_handler
+                return True
+            else:
+                return False          
 
 @internal.on_message('/unsubscribe')
 def unsubscribe(message): 
-    first_step(message)
+    return first_step(message)
 
 @internal.on_message('/subscriptions')        
 def subscriptions(message):
