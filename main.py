@@ -1,8 +1,6 @@
 import fsm
 import internal
 import dbactions
-from tgapi import api
-from tgkeyboard import keyboard
 from sys import argv
 
 check_state = fsm.check_state
