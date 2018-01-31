@@ -97,19 +97,23 @@ def cancel(message):
 @check_state('/subscribe')
 def sub_handler(message):
     troll = internal.handle(message, [subscribe])[0]
+    userid = message['from']['id']
     if troll != False or troll is None:
         get_subscriptions = dbactions.get_subscriptions
-        current_subs = get_subscriptions(message['from']['id'])
-        *not_exesting_subs, = filter(
-            lambda sub: sub not in current_subs, message['text'].split(' ')
-        )
-        *valid, = filter(validator, not_exesting_subs)
+        current_subs = get_subscriptions(userid)
+        not_exesting_subs = [
+            *filter(
+                lambda sub: sub not in current_subs,
+                message['text'].split(' ')
+            )            
+        ]
+        valid = [*filter(validator, not_exesting_subs)]
         if valid:
             for newSub in valid:
                 current_subs[newSub] = internal.time.time()
                 
-            dbactions.update(message['from']['id'], current_subs)
-            succ_sub_message(message['from']['id'], valid, 'установлены')
+            dbactions.update(userid, current_subs)
+            succ_sub_message(userid, valid, 'установлены')
             handlers = internal.message_handlers
             try:
                 handlers[handlers.index(sub_handler)] = subscribe
@@ -120,7 +124,7 @@ def sub_handler(message):
         else:
             api.send_message(
                 token,
-                message['from']['id'],
+                userid,
                 '''Вы уже подписаны на этих пользователей
                 или не найдены корректные имена для подписки'''
                 )
@@ -205,7 +209,7 @@ def unsubscribe(message):
 @internal.on_message('/subscriptions')        
 def subscriptions(message):
     subs = dbactions.get_subscriptions(message['from']['id'])
-    values = list(enumerate(subs))
+    values = [enumerate(subs)]
     kb = keyboard.create(len(subs) // 2, True)
     row = 0
     for x, name in enumerate(subs):
@@ -225,9 +229,10 @@ def subscriptions(message):
 @check_unsub
 @internal.on_callback('.*')  #regexp
 def dialog(callback):
+    userid = callback['from']['id']
     api.delete_message(
         token,
-        callback['from']['id'],
+        userid,
         callback['message']['message_id']
     )
     
@@ -237,7 +242,7 @@ def dialog(callback):
     
     api.send_message(
         token,
-        callback['from']['id'],
+        userid,
         'Selected:',
         keyboard.build(kb)        
     )
@@ -261,11 +266,11 @@ def dialog(callback):
     #adding inline buttons through new message :c
     api.send_message(
         token,
-        callback['from']['id'],
+        userid,
         callback['data'],
         keyboard.build(kb)
     )
-    fsm.set_state('/unsubscribe', str(callback['from']['id'])) 
+    fsm.set_state('/unsubscribe', '%s' % callback['from']['id']) 
 
 
 message_handlers = [cancel, start, subscriptions, subscribe, unsubscribe]
