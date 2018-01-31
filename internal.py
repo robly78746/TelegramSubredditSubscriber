@@ -3,7 +3,8 @@ import json
 import re
 
 lastmsg = 0
-handlers = []
+message_handlers = []
+callbacks_handlers = []
 
 def on_message(text):
     def wrapper(fn):
@@ -13,20 +14,31 @@ def on_message(text):
         return inner
     return wrapper
 
-def handle(message, handlers = handlers):
-    if len(message) > 1:
-        if type(message) is not dict:
-            _filter = [m['message'] for m in message]
+def on_callback(data):
+    def wrapper(fn):
+        def inner(callback):
+            if re.findall(data, callback['data']):
+                return(fn(callback))
+        return inner
+    return wrapper
+
+def handle(recieved, handlers = message_handlers):
+    if len(recieved) > 1:
+        if type(recieved) is not dict:      #we got few messages at once
+            messages = [msg['message'] for msg in recieved]  #throwing useless
         else:
-            _filter = [message]
+            messages = [recieved]
     else:
-        _filter = False
-    for h in handlers:
-        if _filter:     #this also means we have multiple messages
-            *done, = map(h, _filter)
+        messages = None
+    for handler in handlers:
+        if messages is not None:     #this also means we have multiple messages
+            done = [*map(handler, messages)]
             return done
         else:           #thats why if not we transfer single msg directly
-            h(message[0]['message'])
+            if 'message' in recieved[0]:
+                handler(recieved[0]['message'])
+            elif 'callback_query' in recieved[0]:
+                handler(recieved[0]['callback_query'])
 
 def on_update(incoming, webhook = False, cooldown = 1):
     global lastmsg
@@ -52,7 +64,7 @@ def on_update(incoming, webhook = False, cooldown = 1):
         if commands:
             handle(commands)
         elif callbacks:
-            execution('callback_query', callbacks)
+            handle(callbacks, callbacks_handlers)
     
     if not webhook:
         time.sleep(cooldown)

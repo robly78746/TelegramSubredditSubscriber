@@ -18,7 +18,8 @@ def check_unsub(fn):
     def wrapper(callback):
         if callback['data'].split('=')[0] == 'delsub':
             callback['data'] = callback['data'].split('=')[1]
-            unsubscribe(callback, '/unsubscribe')
+            callback['text'] = callback['data']  #hack for correct handling 
+            unsub_handler(callback)
         else:
             fn(callback)
     return wrapper
@@ -87,8 +88,8 @@ def start(message):
 @internal.on_message('/cancel')
 def cancel(message):
     userid = str(message['from']['id'])
-    handlers = internal.handlers
-    if sub_handler in internal.handlers:
+    handlers = internal.message_handlers
+    if sub_handler in handlers:
         handlers[handlers.index(sub_handler)] = subscribe
     _start(userid)
 
@@ -109,7 +110,7 @@ def sub_handler(message):
                 
             dbactions.update(message['from']['id'], current_subs)
             succ_sub_message(message['from']['id'], valid, 'установлены')
-            handlers = internal.handlers
+            handlers = internal.message_handlers
             try:
                 handlers[handlers.index(sub_handler)] = subscribe
             except ValueError:
@@ -154,8 +155,11 @@ def unsub_handler(message):
             delete(unsublist)
         dbactions.update(userid, subs)
         succ_sub_message(userid, unsublist, 'завершены')
-        handlers = internal.handlers
-        handlers[handlers.index(unsub_handler)] = unsubscribe
+        handlers = internal.message_handlers
+        try:
+            handlers[handlers.index(unsub_handler)] = unsubscribe
+        except:
+            pass        #called from unsub callback
         message['text'] = '/cancel'
         cancel(message)     #auto cancel        
 
@@ -180,7 +184,7 @@ def first_step(message):
             keyboard.build(kb)                
         )
         fsm.set_state('%s' % message['text'], userid)
-        handlers = internal.handlers
+        handlers = internal.message_handlers
         if message['text'] == '/subscribe':
             if sub_handler not in handlers:
                 handlers[handlers.index(subscribe)] = sub_handler
@@ -219,6 +223,7 @@ def subscriptions(message):
 
 
 @check_unsub
+@internal.on_callback('.*')  #regexp
 def dialog(callback):
     api.delete_message(
         token,
@@ -264,8 +269,10 @@ def dialog(callback):
 
 
 message_handlers = [cancel, start, subscriptions, subscribe, unsubscribe]
-internal.handlers.extend(message_handlers)
+internal.message_handlers.extend(message_handlers)
+internal.callbacks_handlers.extend([dialog])
 
+#webhook
 if len(argv) > 1:
     if argv[1] == 'webhook':
         resp = api.set_webhook(dbactions.params['token'], argv[2], argv[3])
