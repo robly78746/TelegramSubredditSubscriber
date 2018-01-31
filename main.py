@@ -63,7 +63,7 @@ def _start(userid):
     
     fsm.set_state('/start', userid)
     
-@internal.on_message('/start')
+@internal.on_message(r'/start\s?.*')
 def start(message):
     userid = str(message['from']['id'])
 
@@ -71,7 +71,7 @@ def start(message):
         
         fsm.set_state('/subscribe', userid)
         message['text'] = message['text'].split(' ')[1]
-        subscribe(message)
+        sub_handler(message)
         
     else:        
         if not dbactions.user_exist(userid):
@@ -110,7 +110,10 @@ def sub_handler(message):
             dbactions.update(message['from']['id'], current_subs)
             succ_sub_message(message['from']['id'], valid, 'установлены')
             handlers = internal.handlers
-            handlers[handlers.index(sub_handler)] = subscribe
+            try:
+                handlers[handlers.index(sub_handler)] = subscribe
+            except ValueError:
+                pass        # called from start function
             message['text'] = '/cancel'
             cancel(message)     #auto cancel
         else:
