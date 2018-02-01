@@ -4,13 +4,13 @@ import tgbot.main as bot
 from sys import argv
 
 check_state = fsm.check_state
-token = dbactions.params['token']
 
 def validator(name):
     import re
     check = re.compile(r'([A-Z]|[a-z]|\d|_|-)*')
     a = re.fullmatch(check, name)
     return hasattr(a, 'group') 
+
 
 def check_unsub(fn):
     def wrapper(callback):
@@ -23,44 +23,36 @@ def check_unsub(fn):
     return wrapper
 
 
-def succ_sub_message(userid, subs, message):
+def succ_sub_message(userid, subs, status):
     if type(subs) is not str:
-        kb = keyboard.create(len(subs), inline = True)
-        kbrow = kb['inline_keyboard']
+        info_kb = bot.Keyboard(inline = True, rows= len(subs))
         
         for row, value in enumerate(subs):
-            kbrow[row].append(
-                keyboard.button(kb, value, link =
-                    'http://reddit.com/user/%s/submitted' % value)                
-                )
+            info_kb.add_button(
+                row, value,
+                link='http://reddit.com/user/%s/submitted' % value
+            )            
+
     else:
-        kb = keyboard.create(1, inline = True)
-        kb['inline_keyboard'][0].append(
-            keyboard.button(kb, subs, link =
-                'http://reddit.com/user/%s/submitted' % subs)                
-            )
+        info_kb = bot.Keyboard(inline = True, rows= 1)
+        info_kb.add_button(
+            0, subs, link= 'http://reddit.com/user/%s/submitted' % subs
+        )
     
-    bot.send_message(
-        token, 
-        userid,
-        'Подписки %s' % message,
-        keyboard.build(kb)
-    )   
+    bot.send_message(userid, 'Подписки %s' % status, info_kb)   
+
 
 def _start(userid):
-    kb = keyboard.create(3, False, True, False, True)
-    kbrow = kb['keyboard']
-    kbrow[0].append(keyboard.button(kb, '/subscribe'))
-    kbrow[1].append(keyboard.button(kb, '/unsubscribe'))
-    kbrow[2].append(keyboard.button(kb, '/subscriptions'))    
-    bot.send_message(
-        token,
-        userid,
-        'Выберите действие',
-        keyboard.build(kb)
-    )  
-    
+    hello_kb = bot.Keyboard(
+        inline = False, rows= 3, resize_keyboard= True,
+        one_time_keyboard= False, selective= True
+    )
+    hello_kb.add_button(0, '/subscribe')
+    hello_kb.add_button(1, '/unsubscribe')
+    hello_kb.add_button(2, '/subscriptions')  
+    bot.send_message(userid, 'Выберите действие', hello_kb)   
     fsm.set_state('/start', userid)
+
     
 @bot.on_message(r'/start\s?.*')
 def start(message):
@@ -75,13 +67,10 @@ def start(message):
     else:        
         if not dbactions.user_exist(userid):
             dbactions.register(userid)
-            bot.send_message(
-                token,
-                userid,
-                'Зарегистрированно'
-            ) 
+            bot.send_message(userid, 'Зарегистрированно') 
         else:
             _start(userid)
+
 
 @bot.on_message('/cancel')
 def cancel(message):
@@ -90,6 +79,7 @@ def cancel(message):
     if sub_handler in handlers:
         handlers[handlers.index(sub_handler)] = subscribe
     _start(userid)
+
 
 @bot.on_message(r'.*')     #regexp
 @check_state('/subscribe')
@@ -110,7 +100,7 @@ def sub_handler(message):
                 current_subs[new_sub] = bot.time.time()
                 
             dbactions.update(userid, current_subs)
-            succ_sub_message(userid, valid, 'установлены')
+            succ_sub_message(userid, valid_names, 'установлены')
             handlers = bot.message_handlers
             try:
                 handlers[handlers.index(sub_handler)] = subscribe
@@ -120,7 +110,6 @@ def sub_handler(message):
             cancel(message)     #auto cancel
         else:
             bot.send_message(
-                token,
                 userid,
                 '''Вы уже подписаны на этих пользователей
                 или не найдены корректные имена для подписки'''
@@ -162,30 +151,33 @@ def unsub_handler(message):
         except:
             pass        #called from unsub callback
         message['text'] = '/cancel'
-        cancel(message)     #auto cancel        
+        cancel(message)     #auto cancel 
 
 def first_step(message):
     userlist = message['text'].split(' ')
     userid = str(message['from']['id'])
     if len(userlist) < 1:
         bot.send_message(
-            token,
             userid,
             'Список %s пуст'
             % 'подписок' if message['text'] == '/subscribe'
             else 'отписок'
         )
     else:
-        kb = keyboard.create(1, False, True, True)
-        kb['keyboard'][0].append(keyboard.button(kb, '/cancel'))
+        cancel_kb = bot.Keyboard(
+            inline = False, rows= 1,
+            resize_keyboard= True, one_time_keyboard= True
+        )
+        cancel_kb.add_button(0, '/cancel')
+        
         bot.send_message(
-            token, 
             userid,
             'Теперь введите имена пользователей через пробел',
-            keyboard.build(kb)                
+            cancel_kb                
         )
         fsm.set_state('%s' % message['text'], userid)
         handlers = bot.message_handlers
+        
         if message['text'] == '/subscribe':
             if sub_handler not in handlers:
                 handlers[handlers.index(subscribe)] = sub_handler
@@ -199,90 +191,74 @@ def first_step(message):
             else:
                 return False          
 
+
 @bot.on_message('/unsubscribe')
 def unsubscribe(message): 
     return first_step(message)
+
 
 @bot.on_message('/subscriptions')        
 def subscriptions(message):
     subs = dbactions.get_subscriptions(message['from']['id'])
     values = [enumerate(subs)]
-    kb = keyboard.create(len(subs) // 2, True)
+    subs_kb = bot.Keyboard(inline = True, rows= len(subs) // 2)
     row = 0
     for x, name in enumerate(subs):
-        kb['inline_keyboard'][row].append(
-            keyboard.button(kb, name, callback = name)
-        )
+        subs_kb.add_button(row, caption = name, callback= name)
         if x % 4 == 0:
             row += 1  
-    bot.send_message(
-        token,
-        message['from']['id'],
-        'Ваши подписки',
-        keyboard.build(kb)
-    )
+    bot.send_message(message['from']['id'], 'Ваши подписки', subs_kb)
 
 
 @check_unsub
 @bot.on_callback('.*')  #regexp
 def dialog(callback):
     userid = callback['from']['id']
-    bot.delete_message(
-        token,
-        userid,
-        callback['message']['message_id']
-    )
+    bot.delete_message(userid, callback['message']['message_id'])
     
     #sending new message with cancel bot button
-    kb = keyboard.create(1, False, True, True)
-    kb['keyboard'][0].append(keyboard.button(kb, '/cancel'))
-    
-    bot.send_message(
-        token,
-        userid,
-        'Selected:',
-        keyboard.build(kb)        
-    )
-    #.read().decode('utf-8')
-    
-    kb = keyboard.create(2, True)
-    kbrow = kb['inline_keyboard']
-    kbrow[0].append(
-        keyboard.button(
-            kb, 'Просмотр',
-            'http://reddit.com/user/%s/submitted' % callback['data']            
-        )        
-    )
-    
-    kbrow[1].append(
-        keyboard.button(
-            kb, 'Отписаться' , callback = 'delsub=%s' % callback['data']
+    cancel_kb = bot.Keyboard(
+            inline = False, rows= 1,
+            resize_keyboard= True, one_time_keyboard= True
         )
+    cancel_kb.add_button(0, '/cancel')
+    
+    bot.send_message(userid, 'Selected:', cancel_kb)
+    
+    dialog_kb = bot.Keyboard(inline = True, rows= 2)
+    dialog_kb.add_button(
+        0,
+        'Просмотр',
+        link= 'http://reddit.com/user/%s/submitted' % callback['data']
+    )
+  
+    dialog_kb.add_button(
+        1,
+        'Отписаться',
+        callback = 'delsub=%s' % callback['data']        
     )     
     
     #adding inline buttons through new message :c
-    bot.send_message(
-        token,
-        userid,
-        callback['data'],
-        keyboard.build(kb)
-    )
+    bot.send_message(userid, callback['data'], dialog_kb)
     fsm.set_state('/unsubscribe', '%s' % callback['from']['id']) 
 
 
+#           !!! ORDER MATTERS !!!
 message_handlers = [cancel, start, subscriptions, subscribe, unsubscribe]
 bot.message_handlers.extend(message_handlers)
 bot.callbacks_handlers.extend([dialog])
 
+
 #webhook
 if len(argv) > 1:
     if argv[1] == 'webhook':
-        resp = bot.set_webhook(dbactions.params['token'], argv[2], argv[3])
+        resp = bot.set_webhook(argv[2], argv[3])
         print(resp.read().decode('utf-8'))
         bot.start_server()
+
 
 #polling
 while True:
     bot.on_update(
-        bot.get_updates(token, bot.lastmsg + 1)
+        bot.get_updates(bot.lastmsg + 1)
     )

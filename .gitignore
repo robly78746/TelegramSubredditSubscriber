@@ -1,3 +1,4 @@
 states.json
+settings.json
 *.db 
 \__pycache__

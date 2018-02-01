@@ -43,7 +43,3 @@ def update(subscriber, seq):
         (json.dumps(sublist), subscriber)        
     )
     opendb.commit()
-
-base, con = bdopen()
-
-params = dict(base.execute('select * from settings').fetchall()[0])
