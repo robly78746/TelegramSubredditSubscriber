@@ -2,9 +2,10 @@ import ast
 from sqlite3 import *
 import json
 
+DBNAME = 'users.db'
 
-def bdopen(dbname = 'users.db'):
-    opendb = connect(dbname)
+def bdopen():
+    opendb = connect(DBNAME)
     opendb.row_factory = Row
     bd = opendb.cursor()
     return bd, opendb
