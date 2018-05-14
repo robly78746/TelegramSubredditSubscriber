@@ -54,7 +54,7 @@ def _start(userid):
     fsm.set_state('/start', userid)
 
     
-@bot.on_message(r'/start\s?.*')
+@bot.on_message(r'^/start\s?.*')
 def start(message):
     userid = str(message['from']['id'])
 
@@ -72,7 +72,7 @@ def start(message):
             _start(userid)
 
 
-@bot.on_message('/cancel')
+@bot.on_message('^/cancel$')
 def cancel(message):
     userid = str(message['from']['id'])
     handlers = bot.message_handlers
@@ -116,7 +116,7 @@ def sub_handler(message):
                 )
 
 
-@bot.on_message('/subscribe')
+@bot.on_message('^/subscribe$')
 def subscribe(message):    
     return first_step(message)
 
@@ -192,12 +192,12 @@ def first_step(message):
                 return False          
 
 
-@bot.on_message('/unsubscribe')
+@bot.on_message('^/unsubscribe$')
 def unsubscribe(message): 
     return first_step(message)
 
 
-@bot.on_message('/subscriptions')        
+@bot.on_message('^/subscriptions$')        
 def subscriptions(message):
     subs = dbactions.get_subscriptions(message['from']['id'])
     values = [enumerate(subs)]
