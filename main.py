@@ -1,7 +1,9 @@
 import fsm
 import dbactions
 import tgbot.main as bot
-from sys import argv
+import yaml
+
+conf = yaml.load(open('conf.yml','r').read())
 
 check_state = fsm.check_state
 
@@ -249,16 +251,13 @@ bot.message_handlers.extend(message_handlers)
 bot.callbacks_handlers.extend([dialog])
 
 
-#webhook
-if len(argv) > 1:
-    if argv[1] == 'webhook':
-        resp = bot.set_webhook(argv[2], argv[3])
-        print(resp.read().decode('utf-8'))
-        bot.start_server()
-
-
-#polling
-while True:
-    bot.on_update(
-        bot.get_updates(bot.lastmsg + 1)
-    )
+if conf['webhook']:
+    resp = bot.set_webhook('%s%s' % (conf['domain'],conf['token']), conf['ssl'])
+    print(resp.read().decode('utf-8'))
+    bot.start_server()
+else:
+    #polling
+    while True:
+        bot.on_update(
+            bot.get_updates(bot.lastmsg + 1)
+        )
