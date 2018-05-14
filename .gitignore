@@ -1,4 +1,5 @@
 states.json
 settings.json
+conf.yml
 *.db 
 \__pycache__
