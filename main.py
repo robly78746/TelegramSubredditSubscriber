@@ -1,6 +1,6 @@
 import fsm
 import dbactions
-import tgbot.main as bot
+import tgbot as bot
 import yaml
 
 conf = yaml.load(open('conf.yml','r').read())
