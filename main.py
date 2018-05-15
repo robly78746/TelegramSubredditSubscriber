@@ -69,7 +69,8 @@ def start(message):
     else:        
         if not dbactions.user_exist(userid):
             dbactions.register(userid)
-            tgbot.send_message(userid, 'Зарегистрированно') 
+            tgbot.send_message(userid, 'Зарегистрированно')
+            _start(userid) 
         else:
             _start(userid)
 
