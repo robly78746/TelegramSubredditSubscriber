@@ -1,6 +1,6 @@
 import fsm
 import dbactions
-import tgbot as bot
+import tgbot
 import yaml
 
 conf = yaml.load(open('conf.yml','r').read())
@@ -27,7 +27,7 @@ def check_unsub(fn):
 
 def succ_sub_message(userid, subs, status):
     if type(subs) is not str:
-        info_kb = bot.Keyboard(inline = True, rows= len(subs))
+        info_kb = tgbot.Keyboard(inline = True, rows= len(subs))
         
         for row, value in enumerate(subs):
             info_kb.add_button(
@@ -36,27 +36,27 @@ def succ_sub_message(userid, subs, status):
             )            
 
     else:
-        info_kb = bot.Keyboard(inline = True, rows= 1)
+        info_kb = tgbot.Keyboard(inline = True, rows= 1)
         info_kb.add_button(
             0, subs, link= 'http://reddit.com/user/%s/submitted' % subs
         )
     
-    bot.send_message(userid, 'Подписки %s' % status, info_kb)   
+    tgbot.send_message(userid, 'Подписки %s' % status, info_kb)   
 
 
 def _start(userid):
-    hello_kb = bot.Keyboard(
+    hello_kb = tgbot.Keyboard(
         inline = False, rows= 3, resize_keyboard= True,
         one_time_keyboard= False, selective= True
     )
     hello_kb.add_button(0, '/subscribe')
     hello_kb.add_button(1, '/unsubscribe')
     hello_kb.add_button(2, '/subscriptions')  
-    bot.send_message(userid, 'Выберите действие', hello_kb)   
+    tgbot.send_message(userid, 'Выберите действие', hello_kb)   
     fsm.set_state('/start', userid)
 
     
-@bot.on_message(r'^/start\s?.*')
+@tgbot.on_message(r'^/start\s?.*')
 def start(message):
     userid = str(message['from']['id'])
 
@@ -69,24 +69,24 @@ def start(message):
     else:        
         if not dbactions.user_exist(userid):
             dbactions.register(userid)
-            bot.send_message(userid, 'Зарегистрированно') 
+            tgbot.send_message(userid, 'Зарегистрированно') 
         else:
             _start(userid)
 
 
-@bot.on_message('^/cancel$')
+@tgbot.on_message('^/cancel$')
 def cancel(message):
     userid = str(message['from']['id'])
-    handlers = bot.message_handlers
+    handlers = tgbot.message_handlers
     if sub_handler in handlers:
         handlers[handlers.index(sub_handler)] = subscribe
     _start(userid)
 
 
-@bot.on_message(r'.*')     #regexp
+@tgbot.on_message(r'.*')     #regexp
 @check_state('/subscribe')
 def sub_handler(message):
-    troll = bot.handle(message, [subscribe])[0]
+    troll = tgbot.handle(message, [subscribe])[0]
     userid = message['from']['id']
     if troll != False or troll is None:
         current_subs = dbactions.get_subscriptions(userid)
@@ -99,11 +99,11 @@ def sub_handler(message):
         valid_names = [*filter(validator, not_exesting_subs)]
         if valid_names:
             for new_sub in valid_names:
-                current_subs[new_sub] = bot.time.time()
+                current_subs[new_sub] = tgbot.time.time()
                 
             dbactions.update(userid, current_subs)
             succ_sub_message(userid, valid_names, 'установлены')
-            handlers = bot.message_handlers
+            handlers = tgbot.message_handlers
             try:
                 handlers[handlers.index(sub_handler)] = subscribe
             except ValueError:
@@ -111,18 +111,18 @@ def sub_handler(message):
             message['text'] = '/cancel'
             cancel(message)     #auto cancel
         else:
-            bot.send_message(
+            tgbot.send_message(
                 userid,
                 '''Вы уже подписаны на этих пользователей
                 или не найдены корректные имена для подписки'''
                 )
 
 
-@bot.on_message('^/subscribe$')
+@tgbot.on_message('^/subscribe$')
 def subscribe(message):    
     return first_step(message)
 
-@bot.on_message(r'.*')     #regexp
+@tgbot.on_message(r'.*')     #regexp
 @check_state('/unsubscribe')
 def unsub_handler(message):
     def delete(usr):
@@ -131,7 +131,7 @@ def unsub_handler(message):
         except KeyError:
             pass        #user not in subscriptions
     
-    troll = bot.handle(message, [unsubscribe])[0]
+    troll = tgbot.handle(message, [unsubscribe])[0]
     if troll != False or troll is None:
         userid = str(message['from']['id'])
         if 'text' in message:
@@ -147,7 +147,7 @@ def unsub_handler(message):
             delete(unsublist)
         dbactions.update(userid, subs)
         succ_sub_message(userid, unsublist, 'завершены')
-        handlers = bot.message_handlers
+        handlers = tgbot.message_handlers
         try:
             handlers[handlers.index(unsub_handler)] = unsubscribe
         except:
@@ -159,26 +159,26 @@ def first_step(message):
     userlist = message['text'].split(' ')
     userid = str(message['from']['id'])
     if len(userlist) < 1:
-        bot.send_message(
+        tgbot.send_message(
             userid,
             'Список %s пуст'
             % 'подписок' if message['text'] == '/subscribe'
             else 'отписок'
         )
     else:
-        cancel_kb = bot.Keyboard(
+        cancel_kb = tgbot.Keyboard(
             inline = False, rows= 1,
             resize_keyboard= True, one_time_keyboard= True
         )
         cancel_kb.add_button(0, '/cancel')
         
-        bot.send_message(
+        tgbot.send_message(
             userid,
             'Теперь введите имена пользователей через пробел',
             cancel_kb                
         )
         fsm.set_state('%s' % message['text'], userid)
-        handlers = bot.message_handlers
+        handlers = tgbot.message_handlers
         
         if message['text'] == '/subscribe':
             if sub_handler not in handlers:
@@ -194,40 +194,40 @@ def first_step(message):
                 return False          
 
 
-@bot.on_message('^/unsubscribe$')
+@tgbot.on_message('^/unsubscribe$')
 def unsubscribe(message): 
     return first_step(message)
 
 
-@bot.on_message('^/subscriptions$')        
+@tgbot.on_message('^/subscriptions$')        
 def subscriptions(message):
     subs = dbactions.get_subscriptions(message['from']['id'])
     values = [enumerate(subs)]
-    subs_kb = bot.Keyboard(inline = True, rows= len(subs) // 2)
+    subs_kb = tgbot.Keyboard(inline = True, rows= len(subs) // 2)
     row = 0
     for x, name in enumerate(subs):
         subs_kb.add_button(row, caption = name, callback= name)
         if x % 4 == 0:
             row += 1  
-    bot.send_message(message['from']['id'], 'Ваши подписки', subs_kb)
+    tgbot.send_message(message['from']['id'], 'Ваши подписки', subs_kb)
 
 
 @check_unsub
-@bot.on_callback('.*')  #regexp
+@tgbot.on_callback('.*')  #regexp
 def dialog(callback):
     userid = callback['from']['id']
-    bot.delete_message(userid, callback['message']['message_id'])
+    tgbot.delete_message(userid, callback['message']['message_id'])
     
-    #sending new message with cancel bot button
-    cancel_kb = bot.Keyboard(
+    #sending new message with cancel tgbot button
+    cancel_kb = tgbot.Keyboard(
             inline = False, rows= 1,
             resize_keyboard= True, one_time_keyboard= True
         )
     cancel_kb.add_button(0, '/cancel')
     
-    bot.send_message(userid, 'Selected:', cancel_kb)
+    tgbot.send_message(userid, 'Selected:', cancel_kb)
     
-    dialog_kb = bot.Keyboard(inline = True, rows= 2)
+    dialog_kb = tgbot.Keyboard(inline = True, rows= 2)
     dialog_kb.add_button(
         0,
         'Просмотр',
@@ -241,23 +241,23 @@ def dialog(callback):
     )     
     
     #adding inline buttons through new message :c
-    bot.send_message(userid, callback['data'], dialog_kb)
+    tgbot.send_message(userid, callback['data'], dialog_kb)
     fsm.set_state('/unsubscribe', '%s' % callback['from']['id']) 
 
 
 #           !!! ORDER MATTERS !!!
 message_handlers = [cancel, start, subscriptions, subscribe, unsubscribe]
-bot.message_handlers.extend(message_handlers)
-bot.callbacks_handlers.extend([dialog])
+tgbot.message_handlers.extend(message_handlers)
+tgbot.callbacks_handlers.extend([dialog])
 
 
 if conf['webhook']:
-    resp = bot.set_webhook('%s%s' % (conf['domain'],conf['token']), conf['ssl'])
+    resp = tgbot.set_webhook('%s%s' % (conf['domain'],conf['token']), conf['ssl'])
     print(resp.read().decode('utf-8'))
-    bot.start_server()
+    tgbot.start_server()
 else:
     #polling
     while True:
-        bot.on_update(
-            bot.get_updates(bot.lastmsg + 1)
+        tgbot.on_update(
+            tgbot.get_updates(tgbot.lastmsg + 1)
         )
