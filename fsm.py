@@ -1,19 +1,19 @@
-import json
+import yaml
 
-STATES = 'states.json'
+STATES = 'states.yml'
 
 def load_states():
-    return json.loads(open(STATES , 'r').read())
+    return yaml.load(open(STATES , 'r').read())
 
 def save_states(new_states):
     f = open(STATES, 'w')
-    f.write(json.dumps(new_states))
+    f.write(yaml.dump(new_states))
     f.close()
 
 def set_state(state, user):
-    old = load_states()
-    old[user] = state
-    save_states(old)
+    states = load_states()
+    states[user] = state
+    save_states(states)
 
 def check_state(state):
     def wrapper(fn):
