@@ -12,18 +12,18 @@ def bdopen():
 
 def get_subscriptions(uid):
     bd, opendb = bdopen()
-    bd.execute('select subs from subs where id=%s' % uid)
+    bd.execute('select subs from subs where id=?', (uid, ))
     subscriptions = ast.literal_eval(bd.fetchall()[0][0])
     return subscriptions
 
 def register(uid):
     bd, opendb = bdopen()
-    bd.execute("insert into subs values(%s,'{}')" % uid)
+    bd.execute("insert into subs values(?,'{}')", (uid, ))
     opendb.commit()
 
 def user_exist(uid):
     bd, opendb = bdopen()
-    bd.execute("select id from subs where id=%s" % uid)
+    bd.execute("select id from subs where id=?", (uid, ))
     try:
         int(bd.fetchall()[0][0])
     except:
